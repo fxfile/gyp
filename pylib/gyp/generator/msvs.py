@@ -2690,6 +2690,10 @@ def _GetMSBuildConfigurationDetails(spec, build_file):
       if 'msvs_enable_winrt' not in spec :
         _AddConditionalProperty(properties, condition, 'CharacterSet',
                                 character_set)
+    use_of_mfc = msbuild_attributes.get('UseOfMFC')
+    if use_of_mfc:
+      _AddConditionalProperty(properties, condition, 'UseOfMFC',
+                              use_of_mfc)
   return _GetMSBuildPropertyGroup(spec, 'Configuration', properties)
 
 
@@ -2763,6 +2767,8 @@ def _ConvertMSVSBuildAttributes(spec, config, build_file):
       msbuild_attributes[a] = _ConvertMSVSCharacterSet(msvs_attributes[a])
     elif a == 'ConfigurationType':
       msbuild_attributes[a] = _ConvertMSVSConfigurationType(msvs_attributes[a])
+    elif a == 'UseOfMFC':
+      msbuild_attributes[a] = _ConvertMSVSUseOfMFC(msvs_attributes[a])
     else:
       print 'Warning: Do not know how to convert MSVS attribute ' + a
   return msbuild_attributes
@@ -2788,6 +2794,15 @@ def _ConvertMSVSConfigurationType(config_type):
     }[config_type]
   return config_type
 
+def _ConvertMSVSUseOfMFC(config_type):
+  if config_type.isdigit():
+    config_type = {
+        '0': 'false',
+        '1': 'Static',
+        '2': 'Dynamic',
+    }[config_type]
+  return config_type
+ 
 
 def _GetMSBuildAttributes(spec, config, build_file):
   if 'msbuild_configuration_attributes' not in config:
