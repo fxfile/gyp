@@ -905,7 +905,7 @@ def _GetMsbuildToolsetOfProject(proj_path, spec, version):
   return toolset
 
 
-def _GenerateProject(project, options, version, generator_flags):
+def _GenerateProject(project, options, version, target_arch, generator_flags):
   """Generates a vcproj file.
 
   Arguments:
@@ -923,7 +923,7 @@ def _GenerateProject(project, options, version, generator_flags):
     return []
 
   if version.UsesVcxproj():
-    return _GenerateMSBuildProject(project, options, version, generator_flags)
+    return _GenerateMSBuildProject(project, options, version, target_arch, generator_flags)
   else:
     return _GenerateMSVSProject(project, options, version, generator_flags)
 
@@ -1967,6 +1967,7 @@ def GenerateOutput(target_list, target_dicts, data, params):
   # Get the project file format version back out of where we stashed it in
   # GeneratorCalculatedVariables.
   msvs_version = params['msvs_version']
+  target_arch = params['target_arch']
 
   generator_flags = params.get('generator_flags', {})
 
@@ -1999,7 +2000,7 @@ def GenerateOutput(target_list, target_dicts, data, params):
   for project in project_objects.values():
     fixpath_prefix = project.fixpath_prefix
     missing_sources.extend(_GenerateProject(project, options, msvs_version,
-                                            generator_flags))
+                                            target_arch, generator_flags))
   fixpath_prefix = None
 
   for build_file in data:
@@ -2623,16 +2624,26 @@ def _GetConfigurationCondition(name, settings):
   return (r"'$(Configuration)|$(Platform)'=='%s|%s'" %
           _GetConfigurationAndPlatform(name, settings))
 
+def _AddProjectConfigurations(group, configuration, platform):
+  designation = '%s|%s' % (configuration, platform)
+  group.append(
+     ['ProjectConfiguration', {'Include': designation},
+     ['Configuration', configuration],
+     ['Platform', platform]])
 
-def _GetMSBuildProjectConfigurations(configurations):
+def _GetMSBuildProjectConfigurations(configurations, target_arch):
   group = ['ItemGroup', {'Label': 'ProjectConfigurations'}]
-  for (name, settings) in sorted(configurations.iteritems()):
-    configuration, platform = _GetConfigurationAndPlatform(name, settings)
-    designation = '%s|%s' % (configuration, platform)
-    group.append(
-        ['ProjectConfiguration', {'Include': designation},
-         ['Configuration', configuration],
-         ['Platform', platform]])
+  if target_arch == 'x64':
+    for (name, settings) in sorted(configurations.iteritems()):
+      configuration, platform = _GetConfigurationAndPlatform(name, settings)
+      platform = 'x64'
+      _AddProjectConfigurations(group, configuration, platform)
+      platform = 'Win32'
+      _AddProjectConfigurations(group, configuration, platform)
+  else:
+    for (name, settings) in sorted(configurations.iteritems()):
+      configuration, platform = _GetConfigurationAndPlatform(name, settings)
+      _AddProjectConfigurations(group, configuration, platform)
   return [group]
 
 
@@ -3241,7 +3252,7 @@ def _GetMSBuildProjectReferences(project):
   return references
 
 
-def _GenerateMSBuildProject(project, options, version, generator_flags):
+def _GenerateMSBuildProject(project, options, version, target_arch, generator_flags):
   spec = project.spec
   configurations = spec['configurations']
   project_dir, project_file_name = os.path.split(project.path)
@@ -3323,7 +3334,7 @@ def _GenerateMSBuildProject(project, options, version, generator_flags):
        'DefaultTargets': 'Build'
       }]
 
-  content += _GetMSBuildProjectConfigurations(configurations)
+  content += _GetMSBuildProjectConfigurations(configurations, target_arch)
   content += _GetMSBuildGlobalProperties(spec, project.guid, project_file_name)
   content += import_default_section
   content += _GetMSBuildConfigurationDetails(spec, project.build_file)
