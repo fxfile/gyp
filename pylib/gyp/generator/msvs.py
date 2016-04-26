@@ -2780,6 +2780,8 @@ def _ConvertMSVSBuildAttributes(spec, config, build_file):
       msbuild_attributes[a] = _ConvertMSVSConfigurationType(msvs_attributes[a])
     elif a == 'UseOfMFC':
       msbuild_attributes[a] = _ConvertMSVSUseOfMFC(msvs_attributes[a])
+    elif a == 'TargetName':
+      msbuild_attributes[a] = msvs_attributes[a]
     else:
       print 'Warning: Do not know how to convert MSVS attribute ' + a
   return msbuild_attributes
