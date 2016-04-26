@@ -1098,6 +1098,16 @@ def _GetMSVSConfigurationType(spec, build_file):
   return config_type
 
 
+def _ToolExist(tools, tool_name, setting, value):
+  if tools.get(tool_name):
+    tool = tools[tool_name];
+    if tool.get(setting):
+      for item in tool[setting]:
+        if item == value:
+          return 1;
+  return 0;
+
+
 def _AddConfigurationToMSVSProject(p, spec, config_type, config_name, config):
   """Adds a configuration to the MSVS project.
 
@@ -1132,9 +1142,6 @@ def _AddConfigurationToMSVSProject(p, spec, config_type, config_name, config):
   msvs_settings = config.get('msvs_settings', {})
   MSVSSettings.ValidateMSVSSettings(msvs_settings)
 
-  # Prevent default library inheritance from the environment.
-  _ToolAppend(tools, 'VCLinkerTool', 'AdditionalDependencies', ['$(NOINHERIT)'])
-
   for tool in msvs_settings:
     settings = config['msvs_settings'][tool]
     for setting in settings:
@@ -1148,6 +1155,8 @@ def _AddConfigurationToMSVSProject(p, spec, config_type, config_name, config):
               'AdditionalIncludeDirectories', resource_include_dirs)
   # Add in libraries.
   _ToolAppend(tools, 'VCLinkerTool', 'AdditionalDependencies', libraries)
+  if _ToolExist(tools, 'VCLinkerTool', 'AdditionalDependencies', "$(INHERIT)") == 0:
+    _ToolAppend(tools, 'VCLinkerTool', 'AdditionalDependencies', ['$(NOINHERIT)'])
   _ToolAppend(tools, 'VCLinkerTool', 'AdditionalLibraryDirectories',
               library_dirs)
   if out_file:
